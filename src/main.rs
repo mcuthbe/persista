@@ -1,12 +1,10 @@
-use clipboard_win::{formats, get_clipboard, set_clipboard};
+mod clipboard;
+mod database;
 
-fn get() -> String {
-    let text = get_clipboard(formats::Unicode).expect("Get clipboard contents");
-    text
+use clipboard::set;
+use database::save_clip;
+
+fn main() {
+    set("Test");
+    save_clip("Test").expect("Save clip");
 }
-
-fn set(text: &str) {
-    set_clipboard(formats::Unicode, text).expect("Set clipboard contents");
-}
-
-fn main() {}
