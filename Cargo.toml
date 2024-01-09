@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 clipboard-win = "5.0.0"
 persy = "1.4.7"
+serde = "1.0.195"

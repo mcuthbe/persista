@@ -1,10 +1,19 @@
 mod clipboard;
-mod database;
+mod data_access;
+mod enums;
+mod transformations;
 
-use clipboard::set;
-use database::save_clip;
+use data_access::{get_clip, save_clip};
+use enums::ClipboardItem;
+
+use crate::clipboard::clip_set;
 
 fn main() {
-    set("Test");
-    save_clip("Test").expect("Save clip");
+    clip_set("Test");
+    let testValue = "Test".to_string();
+    let _ = save_clip("Test", ClipboardItem::Text(testValue));
+    let values = get_clip(&"Test".to_string()).unwrap();
+    for val in values {
+        println!("{}", val);
+    }
 }
