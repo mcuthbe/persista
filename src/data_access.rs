@@ -1,27 +1,28 @@
-use std::error::Error;
+use std::{error::Error, result, str::FromStr};
 
-use persy::{Config, Persy, PersyId, ValueIter, ValueMode};
+use persy::{Config, Persy, PersyId, SegmentId, ValueIter, ValueMode};
 
-use crate::{enums::ClipboardItem, transformations::clipboard_item_to_u8_vec};
+use crate::structs::Clip;
 
 const CLIPS: &str = "clips";
 const INDEX_NAME: &str = "name_index";
 const INDEX_KEY: &str = "name";
 
-pub fn save_clip(name: &str, item: ClipboardItem) -> Result<PersyId, Box<dyn Error>> {
-    let persy = open_database();
+pub fn save_clip(item: &Clip) -> Result<PersyId, Box<dyn Error>> {
+    let persy = open_database()?;
 
     let mut transaction = persy.begin()?;
-
-    transaction.create_index::<String, String>(INDEX_NAME, ValueMode::Cluster)?;
-    transaction.put(INDEX_NAME, INDEX_KEY.to_string(), name.to_string())?;
 
     if !transaction.exists_segment(CLIPS)? {
         transaction.create_segment(CLIPS)?;
     }
 
-    !todo!("Serialize properly here");
-    let result = transaction.insert(CLIPS, &clipboard_item_to_u8_vec(item))?;
+    let clip_bytes = bincode::serialize(&item)?;
+
+    let result = transaction.insert(CLIPS, &clip_bytes)?;
+
+    transaction.create_index::<String, PersyId>(INDEX_NAME, ValueMode::Cluster)?;
+    transaction.put(INDEX_NAME, INDEX_KEY.to_string(), result.to_string())?;
 
     let prepared = transaction.prepare()?;
     prepared.commit()?;
@@ -29,15 +30,20 @@ pub fn save_clip(name: &str, item: ClipboardItem) -> Result<PersyId, Box<dyn Err
     Ok(result)
 }
 
-pub fn get_clip(name: &String) -> Result<ValueIter<std::string::String>, Box<dyn Error>> {
-    let persy = open_database();
+pub fn get_clip(name: &String) -> Result<Option<String>, Box<dyn Error>> {
+    let persy = open_database()?;
 
-    let result = persy.get(INDEX_NAME, name)?;
+    let mut persy_ids: ValueIter<String> = persy.get(INDEX_NAME, name)?;
+    if let Some(first) = persy_ids.next() {
+        let persy_id = &PersyId::from_str(&first)?;
+        let value = persy.read(CLIPS, persy_id);
+        return Ok(Some(first.to_owned()));
+    }
 
-    Ok(result)
+    Ok(None)
 }
 
-fn open_database() -> Persy {
+fn open_database() -> Result<Persy, Box<dyn Error>> {
     let persy = Persy::open_or_create_with("./target/data.persy", Config::new(), |persy| {
         let mut transaction = persy.begin()?;
 
@@ -48,8 +54,7 @@ fn open_database() -> Persy {
 
         println!("Clips segment and Index successfully created");
         Ok(())
-    })
-    .expect("Open or create database");
+    })?;
 
-    persy
+    Ok(persy)
 }

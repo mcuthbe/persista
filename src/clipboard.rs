@@ -1,10 +1,12 @@
 use clipboard_win::{formats, get_clipboard, set_clipboard};
 
-pub fn clip_get() -> String {
-    let text = get_clipboard(formats::Unicode).expect("Get clipboard contents");
-    text
+use crate::errors::PersistaError;
+
+pub fn clip_get() -> Result<String, PersistaError> {
+    let text = get_clipboard(formats::Unicode)?;
+    Ok(text)
 }
 
 pub fn clip_set(text: &str) {
-    set_clipboard(formats::Unicode, text).expect("Set clipboard contents");
+    set_clipboard(formats::Unicode, text);
 }

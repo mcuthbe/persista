@@ -1,6 +1,9 @@
-//derive binary serialization
+use serde::{Deserialize, Serialize};
+
+use crate::enums::ClipboardItem;
+
 #[derive(Serialize, Deserialize, Debug)]
-struct Clip {
-    name: String,
-    value: ClipboardItem,
+pub(crate) struct Clip {
+    pub name: String,
+    pub value: ClipboardItem,
 }
