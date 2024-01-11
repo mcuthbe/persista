@@ -2,11 +2,10 @@ use std::{error::Error, result, str::FromStr};
 
 use persy::{Config, Persy, PersyId, SegmentId, ValueIter, ValueMode};
 
-use crate::structs::Clip;
+use crate::{structs::Clip, enums::ClipboardItem};
 
 const CLIPS: &str = "clips";
 const INDEX_NAME: &str = "name_index";
-const INDEX_KEY: &str = "name";
 
 pub fn save_clip(item: &Clip) -> Result<PersyId, Box<dyn Error>> {
     let persy = open_database()?;
@@ -21,8 +20,13 @@ pub fn save_clip(item: &Clip) -> Result<PersyId, Box<dyn Error>> {
 
     let result = transaction.insert(CLIPS, &clip_bytes)?;
 
-    transaction.create_index::<String, PersyId>(INDEX_NAME, ValueMode::Cluster)?;
-    transaction.put(INDEX_NAME, INDEX_KEY.to_string(), result.to_string())?;
+    if !transaction.exists_index(INDEX_NAME)? {
+        transaction.create_index::<String, PersyId>(INDEX_NAME, ValueMode::Cluster)?;
+    }
+
+    let persy_id_string = result.to_string();
+
+    transaction.put(INDEX_NAME, item.name.to_string(), persy_id_string)?;
 
     let prepared = transaction.prepare()?;
     prepared.commit()?;
@@ -30,14 +34,20 @@ pub fn save_clip(item: &Clip) -> Result<PersyId, Box<dyn Error>> {
     Ok(result)
 }
 
-pub fn get_clip(name: &String) -> Result<Option<String>, Box<dyn Error>> {
+pub fn get_clip(name: &String) -> Result<Option<ClipboardItem>, Box<dyn Error>> {
     let persy = open_database()?;
 
     let mut persy_ids: ValueIter<String> = persy.get(INDEX_NAME, name)?;
     if let Some(first) = persy_ids.next() {
         let persy_id = &PersyId::from_str(&first)?;
-        let value = persy.read(CLIPS, persy_id);
-        return Ok(Some(first.to_owned()));
+        let result = persy.read(CLIPS, persy_id)?;
+        match result {
+            Some(clip_bytes) => {
+                let clip: Clip = bincode::deserialize(&clip_bytes)?;
+                return Ok(Some(clip.value));
+            }
+            None => return Ok(None),
+        }
     }
 
     Ok(None)

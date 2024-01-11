@@ -19,7 +19,7 @@ fn main() {
     let _ = save_clip(&test_clip);
     let values = get_clip(&"Test".to_string()).unwrap();
     match values {
-        Some(value) => println!("Value: {}", value),
+        Some(clip) => println!("Value: {}", clip.as_str()),
         None => println!("No value found"),
     }
 }
