@@ -1,6 +1,6 @@
-use std::{error::Error, result, str::FromStr};
+use std::{error::Error, str::FromStr};
 
-use persy::{Config, Persy, PersyId, SegmentId, ValueIter, ValueMode};
+use persy::{Config, Persy, PersyId, ValueIter, ValueMode};
 
 use crate::{structs::Clip, enums::ClipboardItem};
 
@@ -37,15 +37,15 @@ pub fn save_clip(item: &Clip) -> Result<PersyId, Box<dyn Error>> {
 pub fn get_clip(name: &String) -> Result<Option<ClipboardItem>, Box<dyn Error>> {
     let persy = open_database()?;
 
-    let mut persy_ids: ValueIter<String> = persy.get(INDEX_NAME, name)?;
-    if let Some(first) = persy_ids.next() {
-        let persy_id = &PersyId::from_str(&first)?;
+    let id_string: Option<String> = persy.one(INDEX_NAME, name)?;
+    if let Some(id_string) = id_string {
+        let persy_id = &PersyId::from_str(&id_string)?;
         let result = persy.read(CLIPS, persy_id)?;
         match result {
             Some(clip_bytes) => {
                 let clip: Clip = bincode::deserialize(&clip_bytes)?;
                 return Ok(Some(clip.value));
-            }
+             }
             None => return Ok(None),
         }
     }
