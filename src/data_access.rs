@@ -1,14 +1,15 @@
 use std::{error::Error, str::FromStr};
 
-use persy::{Config, Persy, PersyId, ValueIter, ValueMode};
+use persy::{Config, Persy, PersyId, ValueMode};
 
 use crate::{structs::Clip, enums::ClipboardItem};
 
 const CLIPS: &str = "clips";
 const INDEX_NAME: &str = "name_index";
+const DB_NAME: &str = "target/data.persy";
 
 pub fn save_clip(item: &Clip) -> Result<PersyId, Box<dyn Error>> {
-    let persy = open_database()?;
+    let persy = open_database(DB_NAME)?;
 
     let mut transaction = persy.begin()?;
 
@@ -35,7 +36,7 @@ pub fn save_clip(item: &Clip) -> Result<PersyId, Box<dyn Error>> {
 }
 
 pub fn get_clip(name: &String) -> Result<Option<ClipboardItem>, Box<dyn Error>> {
-    let persy = open_database()?;
+    let persy = open_database(DB_NAME)?;
 
     let id_string: Option<String> = persy.one(INDEX_NAME, name)?;
     if let Some(id_string) = id_string {
@@ -53,8 +54,8 @@ pub fn get_clip(name: &String) -> Result<Option<ClipboardItem>, Box<dyn Error>> 
     Ok(None)
 }
 
-fn open_database() -> Result<Persy, Box<dyn Error>> {
-    let persy = Persy::open_or_create_with("./target/data.persy", Config::new(), |persy| {
+fn open_database(db_name: &str) -> Result<Persy, Box<dyn Error>> {
+    let persy = Persy::open_or_create_with(db_name, Config::new(), |persy| {
         let mut transaction = persy.begin()?;
 
         transaction.create_segment(CLIPS)?;
@@ -67,4 +68,34 @@ fn open_database() -> Result<Persy, Box<dyn Error>> {
     })?;
 
     Ok(persy)
+}
+
+
+#[cfg(test)]
+mod tests {
+
+    use crate::util::generate_unique_value;
+
+    use super::*;
+    const TEST_DB_NAME: &str = "target/test.persy";
+
+    #[test]
+    fn save_clip_succeeds(){
+        let unique_name = generate_unique_value();
+        let persy = open_database(TEST_DB_NAME).unwrap();
+
+        let clip = Clip {
+            name: unique_name.to_string(),
+            value: ClipboardItem::Text("Test".to_string()),
+        };
+
+
+        let result = save_clip(&clip).unwrap();
+
+        let clip = get_clip(&unique_name).unwrap();
+
+        let clip_data = persy.read(CLIPS, &result).unwrap().unwrap();
+        let deserialized = bincode::deserialize::<Clip>(&clip_data).unwrap();
+        assert_eq!(deserialized.name, unique_name);
+    }
 }
