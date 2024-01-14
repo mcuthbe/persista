@@ -1,6 +1,6 @@
 use std::{error::Error, str::FromStr};
 
-use persy::{Config, Persy, PersyId, ValueMode};
+use persy::{Config, Persy, PersyId, ValueIter, ValueMode};
 
 use crate::{enums::ClipboardItem, structs::Clip};
 
@@ -39,6 +39,42 @@ pub fn retrieve_clip(
     }
 
     Ok(None)
+}
+
+pub fn search_clips(persy: &Persy, search: &str) -> Result<Vec<Clip>, Box<dyn Error>> {
+    let results = persy.scan(CLIPS)?;
+
+    let values: Vec<Clip> = results
+        .filter_map(|(_, bytes)| {
+            if let Ok(clip) = bincode::deserialize::<Clip>(&bytes) {
+                if search.is_empty() || clip.name.contains(search) {
+                    Some(clip)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    Ok(values)
+}
+
+pub fn delete_clip(persy: &Persy, name: &String) -> Result<bool, Box<dyn Error>> {
+    let id_string: Option<String> = persy.one(INDEX_NAME, name)?;
+    Ok(if let Some(id_string) = id_string {
+        let persy_id = PersyId::from_str(&id_string)?;
+
+        let mut transaction = persy.begin()?;
+        transaction.delete(CLIPS, &persy_id)?;
+
+        let prepared = transaction.prepare()?;
+        prepared.commit()?;
+        true
+    } else {
+        false
+    })
 }
 
 pub fn open_database(db_name: &str) -> Result<Persy, Box<dyn Error>> {
@@ -121,7 +157,7 @@ mod tests {
     }
 
     #[test]
-    fn get_clip_returns_same_clip_set_by_save_clip() {
+    fn retrieve_clip_returns_same_clip_set_by_save_clip() {
         wrap_test(Box::new(|persy| {
             let unique_name = generate_unique_value();
 
@@ -139,7 +175,7 @@ mod tests {
 
     //get successfully retrieves clip
     #[test]
-    fn get_clip_success() {
+    fn retrieve_clip_success() {
         wrap_test(Box::new(|persy| {
             let unique_name = generate_unique_value();
 
@@ -167,12 +203,67 @@ mod tests {
     }
 
     #[test]
-    fn get_clip_returns_none_if_clip_does_not_exist() {
+    fn retrieve_clip_returns_none_if_clip_does_not_exist() {
         wrap_test(Box::new(|persy| {
             let unique_name = generate_unique_value();
 
             let result = retrieve_clip(&persy, &unique_name).unwrap();
 
+            assert!(result.is_none());
+        }));
+    }
+
+    #[test]
+    fn search_clips_returns_all_with_empty_search() {
+        wrap_test(Box::new(|persy| {
+            let unique_name = generate_unique_value();
+
+            let clip = Clip {
+                name: (&unique_name).to_string(),
+                value: ClipboardItem::Text("Test".to_string()),
+            };
+            let _ = save_clip(&persy, &clip).unwrap();
+
+            let result = search_clips(&persy, &"".to_string()).unwrap();
+
+            assert_eq!(result.len(), 1);
+            assert_eq!(result[0].name, unique_name);
+        }));
+    }
+
+    #[test]
+    fn search_clips_returns_only_searched_clips() {
+        wrap_test(Box::new(|persy| {
+            let clip = Clip {
+                name: "Test1".to_owned(),
+                value: ClipboardItem::Text("Test".to_string()),
+            };
+            let _ = save_clip(&persy, &clip).unwrap();
+
+            let result = search_clips(&persy, &"Test1".to_string()).unwrap();
+
+            assert_eq!(result.len(), 1);
+            assert_eq!(result[0].name, "Test1");
+        }));
+    }
+
+    #[test]
+    fn delete_clip_success() {
+        wrap_test(Box::new(|persy| {
+            let unique_name = generate_unique_value();
+
+            let clip = Clip {
+                name: (&unique_name).to_string(),
+                value: ClipboardItem::Text("Test".to_string()),
+            };
+            let _ = save_clip(&persy, &clip).unwrap();
+
+            let result = delete_clip(&persy, &unique_name).unwrap();
+
+            assert!(result);
+
+            //try get clip, and assert that it returns None
+            let result = retrieve_clip(&persy, &unique_name).unwrap();
             assert!(result.is_none());
         }));
     }
