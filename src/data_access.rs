@@ -39,19 +39,9 @@ pub fn get_clip(persy: &Persy, name: &String) -> Result<Option<ClipboardItem>, B
 }
 
 pub fn open_database(db_name: &str) -> Result<Persy, Box<dyn Error>> {
-    let persy = Persy::open_or_create_with(db_name, Config::new(), |persy| {
-        let mut transaction = persy.begin()?;
-
-        transaction.create_segment(CLIPS)?;
-
-        transaction.create_index::<String, String>(INDEX_NAME, ValueMode::Cluster)?;
-
-        let prepared = transaction.prepare()?;
-        prepared.commit()?;
-
-        println!("Clips segment and Index successfully created");
-        Ok(())
-    })?;
+    println!("{}", &db_name);
+    let persy = Persy::open_or_create_with(db_name, Config::new(), |_| Ok({
+    }))?;
 
     let mut transaction = persy.begin()?;
 
@@ -78,61 +68,53 @@ mod tests {
     use crate::util::generate_unique_value;
 
     use super::*;
-    const TEST_DB_NAME: &str = "target/test.persy";
 
-    fn setup() -> Persy {
-        let _ = fs::remove_file(TEST_DB_NAME);
-        let persy = open_database(TEST_DB_NAME).unwrap();
-        persy
-    }
+    fn wrap_test(test: Box<dyn FnOnce(&Persy) -> ()>)    {
+        let _ = fs::create_dir_all("target/");
+        let unique_name = "target/tests/".to_owned() + &generate_unique_value();
 
-    fn teardown() {
-        let _ = fs::remove_file(TEST_DB_NAME);
+        let persy = open_database(&unique_name).unwrap();
+        test(&persy);
+        let _ = fs::remove_file(unique_name);
     }
 
     #[test]
     fn save_clip_succeeds(){
-        // Arrange
-        let persy = setup();
-        let unique_name = generate_unique_value();
-        let clip = Clip {
-            name: (&unique_name).to_string(),
-            value: ClipboardItem::Text("Test".to_string()),
-        };
+         wrap_test(Box::new(|persy| {
+             let unique_name = &generate_unique_value();
+             let clip = Clip {
+                 name: (&unique_name).to_string(),
+                 value: ClipboardItem::Text("Test".to_string()),
+             };
 
-        // Act
-        let result = save_clip(&persy, &clip).unwrap();
+             let result = save_clip(&persy, &clip).unwrap();
 
-        // Assert
-        let clip_data = persy.read(CLIPS, &result).unwrap().unwrap();
-        let deserialized = bincode::deserialize::<Clip>(&clip_data).unwrap();
-        assert_eq!(deserialized.name, unique_name);
-        teardown();
+             let clip_data = persy.read(CLIPS, &result).unwrap().unwrap();
+             let deserialized = bincode::deserialize::<Clip>(&clip_data).unwrap();
+             assert_eq!(&deserialized.name, unique_name);
+         }));
     }
 
     #[test]
     fn save_duplicate_clip_overwrites(){
-        // Arrange
-        let persy = setup();
-        let unique_name = generate_unique_value();
-        let clip = Clip {
-            name: (&unique_name).to_string(),
-            value: ClipboardItem::Text("Test".to_string()),
-        };
-        let _ = save_clip(&persy, &clip).unwrap();
-        let clip = Clip {
-            name: (&unique_name).to_string(),
-            value: ClipboardItem::Text("Test2".to_string()),
-        };
+        wrap_test(Box::new(|persy|{
+            let unique_name = generate_unique_value();
+            let clip = Clip {
+                name: (&unique_name).to_string(),
+                value: ClipboardItem::Text("Test".to_string()),
+            };
+            let _ = save_clip(&persy, &clip).unwrap();
 
-        // Act
-        let result = save_clip(&persy, &clip).unwrap();
+            let clip = Clip {
+                name: (&unique_name).to_string(),
+                value: ClipboardItem::Text("Test2".to_string()),
+            };
+            let result = save_clip(&persy, &clip).unwrap();
 
-        // Assert
-        let clip_data = persy.read(CLIPS, &result).unwrap().unwrap();
-        let deserialized = bincode::deserialize::<Clip>(&clip_data).unwrap();
-        assert_eq!(deserialized.name, unique_name);
-        assert_eq!(deserialized.value.as_str(), "Test2");
-        teardown();
+            let clip_data = persy.read(CLIPS, &result).unwrap().unwrap();
+            let deserialized = bincode::deserialize::<Clip>(&clip_data).unwrap();
+            assert_eq!(deserialized.name, unique_name);
+            assert_eq!(deserialized.value.as_str(), "Test2");
+        }));
     }
 }

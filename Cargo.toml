@@ -8,6 +8,7 @@ bincode = "1.3.3"
 clipboard-win = "5.0.0"
 persy = "1.4.7"
 serde = {version = "1.0.195", features = ["derive"]}
+uuid = {features = ["v4"]}
 
 [env]
 RUST_BACKTRACE = "1"
