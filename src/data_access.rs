@@ -73,26 +73,66 @@ pub fn open_database(db_name: &str) -> Result<Persy, Box<dyn Error>> {
 #[cfg(test)]
 mod tests {
 
+    use std::fs;
+
     use crate::util::generate_unique_value;
 
     use super::*;
+    const TEST_DB_NAME: &str = "target/test.persy";
+
+    fn setup() -> Persy {
+        let _ = fs::remove_file(TEST_DB_NAME);
+        let persy = open_database(TEST_DB_NAME).unwrap();
+        persy
+    }
+
+    fn teardown() {
+        let _ = fs::remove_file(TEST_DB_NAME);
+    }
 
     #[test]
     fn save_clip_succeeds(){
+        // Arrange
+        let persy = setup();
         let unique_name = generate_unique_value();
-
         let clip = Clip {
             name: (&unique_name).to_string(),
             value: ClipboardItem::Text("Test".to_string()),
         };
 
-        let persy = open_database("target/test.persy").unwrap();
-
+        // Act
         let result = save_clip(&persy, &clip).unwrap();
-        let persy_id_string = &PersyId::from_str(&result.to_string()).unwrap();
 
-        let clip_data = persy.read(CLIPS, persy_id_string).unwrap().unwrap();
+        // Assert
+        let clip_data = persy.read(CLIPS, &result).unwrap().unwrap();
         let deserialized = bincode::deserialize::<Clip>(&clip_data).unwrap();
         assert_eq!(deserialized.name, unique_name);
+        teardown();
+    }
+
+    #[test]
+    fn save_duplicate_clip_overwrites(){
+        // Arrange
+        let persy = setup();
+        let unique_name = generate_unique_value();
+        let clip = Clip {
+            name: (&unique_name).to_string(),
+            value: ClipboardItem::Text("Test".to_string()),
+        };
+        let _ = save_clip(&persy, &clip).unwrap();
+        let clip = Clip {
+            name: (&unique_name).to_string(),
+            value: ClipboardItem::Text("Test2".to_string()),
+        };
+
+        // Act
+        let result = save_clip(&persy, &clip).unwrap();
+
+        // Assert
+        let clip_data = persy.read(CLIPS, &result).unwrap().unwrap();
+        let deserialized = bincode::deserialize::<Clip>(&clip_data).unwrap();
+        assert_eq!(deserialized.name, unique_name);
+        assert_eq!(deserialized.value.as_str(), "Test2");
+        teardown();
     }
 }
