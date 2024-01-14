@@ -6,7 +6,7 @@ mod structs;
 mod util;
 
 use clipboard::clip_get;
-use data_access::{get_clip, save_clip, open_database};
+use data_access::{open_database, retrieve_clip, save_clip};
 use enums::ClipboardItem;
 use structs::Clip;
 
@@ -21,7 +21,7 @@ fn main() {
     };
     let persy = open_database("target/data.persy").unwrap();
     let _ = save_clip(&persy, &test_clip);
-    let values = get_clip(&persy, &"Test".to_string()).unwrap();
+    let values = retrieve_clip(&persy, &"Test".to_string()).unwrap();
     match values {
         Some(clip) => println!("Value: {}", clip.as_str()),
         None => println!("No value found"),
