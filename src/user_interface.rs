@@ -26,6 +26,8 @@ impl PersistaApp {
 
 impl eframe::App for PersistaApp {
     fn update(&mut self, context: &Context, _frame: &mut Frame) {
+        egui::CentralPanel::default().show(context, |_| {});
+
         let _ = show_popup(context, &mut self.search_query);
     }
 }
@@ -34,25 +36,28 @@ pub fn show_popup(context: &Context, search_query: &mut String) -> Result<(), Pe
     Window::new("Search clips")
         .open(&mut true)
         .show(context, |ui| {
+            ui.set_width(ui.available_width());
+            ui.set_height(ui.available_height());
+
             ui.horizontal(|ui| {
                 ui.label("Search:");
-                ui.text_edit_singleline(search_query)
-            });
+                if ui.text_edit_singleline(search_query).changed() {
+                    ui.separator();
 
-            ui.separator();
+                    let persy = open_database("target/data.persy").unwrap();
 
-            let persy = open_database("target/data.persy").unwrap();
+                    let clips = search_clips(&persy, &search_query).unwrap();
 
-            let clips = search_clips(&persy, &search_query).unwrap();
-
-            for clip in clips {
-                if ui.button(&clip.name).clicked() {
-                    match clip_set(clip.value.as_str()) {
-                        Ok(_) => {}
-                        Err(e) => eprintln!("Error: {}", e),
+                    for clip in clips {
+                        if ui.button(&clip.name).clicked() {
+                            match clip_set(clip.value.as_str()) {
+                                Ok(_) => {}
+                                Err(e) => eprintln!("Error: {}", e),
+                            }
+                        }
                     }
                 }
-            }
+            });
         });
 
     Ok(())

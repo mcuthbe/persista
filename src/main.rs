@@ -6,18 +6,17 @@ mod structs;
 mod user_interface;
 mod util;
 
-use clipboard::clip_get;
-use data_access::{open_database, retrieve_clip, save_clip};
 use eframe::egui;
-use enums::ClipboardItem;
-use epi::App;
-use structs::Clip;
-use user_interface::{show_popup, PersistaApp};
+use egui::ViewportBuilder;
 
-use crate::clipboard::clip_set;
+use user_interface::PersistaApp;
 
 fn main() {
-    let options = eframe::NativeOptions::default();
+    let mut options = eframe::NativeOptions::default();
+    options.persist_window = false;
+    options.viewport = ViewportBuilder::default()
+        .with_inner_size(egui::vec2(250.0, 400.0))
+        .with_decorations(false);
 
     let app = PersistaApp {
         search_query: "".to_string(),
