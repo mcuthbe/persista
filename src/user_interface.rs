@@ -1,3 +1,5 @@
+use std::mem;
+
 use crate::{
     clipboard::clip_set,
     data_access::{open_database, retrieve_clip, search_clips},
@@ -6,12 +8,14 @@ use crate::{
 };
 use eframe::egui::Context;
 use eframe::Frame;
-use egui::Window;
+use egui::{Response, Ui, Window};
+use epi::egui::text;
 
 #[derive(Default)]
 pub struct PersistaApp {
     pub search_query: String,
     pub clips: Vec<Clip>,
+    pub should_focus: bool,
 }
 
 impl PersistaApp {
@@ -26,39 +30,37 @@ impl PersistaApp {
 
 impl eframe::App for PersistaApp {
     fn update(&mut self, context: &Context, _frame: &mut Frame) {
-        egui::CentralPanel::default().show(context, |_| {});
-
-        let _ = show_popup(context, &mut self.search_query);
-    }
-}
-
-pub fn show_popup(context: &Context, search_query: &mut String) -> Result<(), PersistaError> {
-    Window::new("Search clips")
-        .open(&mut true)
-        .show(context, |ui| {
+        egui::CentralPanel::default().show(context, |ui| {
             ui.set_width(ui.available_width());
             ui.set_height(ui.available_height());
 
-            ui.horizontal(|ui| {
-                ui.label("Search:");
-                if ui.text_edit_singleline(search_query).changed() {
-                    ui.separator();
+            ui.label("Search:");
+            let text_edit_response = ui.text_edit_singleline(&mut self.search_query);
 
-                    let persy = open_database("target/data.persy").unwrap();
+            ui.separator();
 
-                    let clips = search_clips(&persy, &search_query).unwrap();
-
-                    for clip in clips {
-                        if ui.button(&clip.name).clicked() {
-                            match clip_set(clip.value.as_str()) {
-                                Ok(_) => {}
-                                Err(e) => eprintln!("Error: {}", e),
-                            }
-                        }
+            for clip in &self.clips {
+                ui.label(&clip.name);
+                if ui.button(&clip.name).clicked() {
+                    match clip_set(clip.value.as_str()) {
+                        Ok(_) => {}
+                        Err(e) => eprintln!("Error: {}", e),
                     }
                 }
-            });
-        });
+            }
 
-    Ok(())
+            if text_edit_response.changed() {
+                let persy = open_database("target/data.persy").unwrap();
+
+                self.clips = search_clips(&persy, &mut self.search_query).unwrap();
+            }
+
+            if self.should_focus {
+                self.should_focus = false;
+                ui.memory_mut(|memory| {
+                    memory.request_focus(text_edit_response.id);
+                })
+            }
+        });
+    }
 }
