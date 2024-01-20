@@ -8,7 +8,7 @@ use crate::{
 };
 use eframe::egui::Context;
 use eframe::Frame;
-use egui::{Response, Ui, Window};
+use egui::{ImageSource, Rect, Response, Ui, Window};
 use epi::egui::text;
 
 #[derive(Default)]
@@ -40,13 +40,40 @@ impl eframe::App for PersistaApp {
             ui.separator();
 
             for clip in &self.clips {
-                ui.label(&clip.name);
-                if ui.button(&clip.name).clicked() {
-                    match clip_set(clip.value.as_str()) {
-                        Ok(_) => {}
-                        Err(e) => eprintln!("Error: {}", e),
+                ui.horizontal(|ui| {
+                    ui.vertical(|ui| {
+                        if ui.link(&clip.name).clicked() {
+                            match clip_set(clip.value.as_str()) {
+                                Ok(_) => {}
+                                Err(e) => eprintln!("Error: {}", e),
+                            }
+                        }
+                        match &clip.value {
+                            crate::enums::ClipboardItem::Image(image) => {
+                                let uri = "bytes://my_image.png"; // Replace with your actual URI
+
+                                let image_source = egui::ImageSource::Bytes {
+                                    uri: std::borrow::Cow::Borrowed(uri),
+                                    bytes: image.clone().into(),
+                                };
+                                ui.add(
+                                    egui::Image::new(image_source).rounding(5.0), // .tint(egui::Color32::LIGHT_BLUE) // Optional tinting
+                                )
+                            }
+                            _ => ui.label(clip.value.as_str()),
+                        };
+                    });
+
+                    ui.add_space(ui.available_width() - 30.0);
+
+                    if ui.button("x").clicked() {
+                        match clip_set(clip.value.as_str()) {
+                            Ok(_) => {}
+                            Err(e) => eprintln!("Error: {}", e),
+                        }
                     }
-                }
+                });
+                ui.separator();
             }
 
             if text_edit_response.changed() {

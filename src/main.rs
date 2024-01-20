@@ -16,12 +16,12 @@ use structs::Clip;
 use user_interface::PersistaApp;
 
 fn main() {
-    clip_set("Test").unwrap();
-    clip_get().unwrap();
+    let clip = clip_get().unwrap();
     let test_clip = Clip {
-        name: "Test".to_string(),
-        value: ClipboardItem::Text("Test".to_string()),
+        name: "image".to_owned(),
+        value: ClipboardItem::Text(clip.to_string()),
     };
+    // clip_set("Test").unwrap();
 
     // Inlined function to call and dispose of persy
     {
