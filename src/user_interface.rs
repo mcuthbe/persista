@@ -1,8 +1,8 @@
-use std::mem;
+use std::{io::Empty, mem};
 
 use crate::{
     clipboard::clip_set,
-    data_access::{open_database, retrieve_clip, search_clips},
+    data_access::{delete_clip, open_database, retrieve_clip, search_clips},
     errors::PersistaError,
     structs::Clip,
 };
@@ -16,15 +16,15 @@ pub struct PersistaApp {
     pub search_query: String,
     pub clips: Vec<Clip>,
     pub should_focus: bool,
+    pub message: String,
+    pub should_refersh: bool,
 }
 
 impl PersistaApp {
-    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        // Customize egui here with cc.egui_ctx.set_fonts and cc.egui_ctx.set_visuals.
-        // Restore app state using cc.storage (requires the "persistence" feature).
-        // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
-        // for e.g. egui::PaintCallback.
-        Self::default()
+    fn refresh_clips(&mut self) {
+        let persy = open_database("target/data.persy").unwrap();
+
+        self.clips = search_clips(&persy, &mut self.search_query).unwrap()
     }
 }
 
@@ -67,9 +67,16 @@ impl eframe::App for PersistaApp {
                     ui.add_space(ui.available_width() - 30.0);
 
                     if ui.button("x").clicked() {
-                        match clip_set(clip.value.as_str()) {
-                            Ok(_) => {}
-                            Err(e) => eprintln!("Error: {}", e),
+                        let persy = open_database("target/data.persy").unwrap();
+
+                        match delete_clip(&persy, &clip.name) {
+                            Ok(_) => {
+                                self.should_refersh = true;
+                                self.message = "Successfully deleted clip".to_string();
+                            }
+                            Err(e) => {
+                                self.message = "Failed to delete clip".to_owned() + &e.to_string()
+                            }
                         }
                     }
                 });
@@ -77,9 +84,12 @@ impl eframe::App for PersistaApp {
             }
 
             if text_edit_response.changed() {
-                let persy = open_database("target/data.persy").unwrap();
+                self.should_refersh = true
+            }
 
-                self.clips = search_clips(&persy, &mut self.search_query).unwrap();
+            if self.should_refersh {
+                self.refresh_clips();
+                self.should_refersh = false
             }
 
             if self.should_focus {
@@ -87,6 +97,10 @@ impl eframe::App for PersistaApp {
                 ui.memory_mut(|memory| {
                     memory.request_focus(text_edit_response.id);
                 })
+            }
+
+            if !self.message.is_empty() {
+                ui.label(&self.message);
             }
         });
     }

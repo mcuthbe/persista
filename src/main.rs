@@ -7,7 +7,7 @@ mod user_interface;
 mod util;
 
 use clipboard::{clip_get, clip_set};
-use data_access::{open_database, retrieve_clip, save_clip};
+use data_access::{open_database, retrieve_clip, save_clip, search_clips};
 use eframe::egui;
 use egui::ViewportBuilder;
 
@@ -44,6 +44,8 @@ fn main() {
         search_query: "".to_string(),
         clips: vec![],
         should_focus: true,
+        message: "".to_string(),
+        should_refersh: true,
     };
 
     eframe::run_native("Persista", options, Box::new(|cc| Box::new(app)));
