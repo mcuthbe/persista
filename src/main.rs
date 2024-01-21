@@ -6,7 +6,7 @@ mod structs;
 mod user_interface;
 mod util;
 
-use clipboard::{clip_get, clip_set};
+use clipboard::{get_clip, set_clip};
 use data_access::{open_database, retrieve_clip, save_clip, search_clips};
 use eframe::egui;
 use egui::ViewportBuilder;
@@ -16,10 +16,11 @@ use structs::Clip;
 use user_interface::PersistaApp;
 
 fn main() {
-    let clip = clip_get().unwrap();
+    get_clip();
+    let clip = get_clip().unwrap();
     let test_clip = Clip {
         name: "image".to_owned(),
-        value: ClipboardItem::Text(clip.to_string()),
+        value: clip,
     };
     // clip_set("Test").unwrap();
 
@@ -46,6 +47,7 @@ fn main() {
         should_focus: true,
         message: "".to_string(),
         should_refersh: true,
+        new_clip_name: "".to_string(),
     };
 
     eframe::run_native("Persista", options, Box::new(|cc| Box::new(app)));
