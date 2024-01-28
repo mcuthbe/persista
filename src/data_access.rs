@@ -8,6 +8,15 @@ const CLIPS: &str = "clips";
 const INDEX_NAME: &str = "name_index";
 
 pub fn save_clip(persy: &Persy, item: &Clip) -> Result<PersyId, Box<dyn Error>> {
+    let existing_id: Option<String> = persy.one(INDEX_NAME, &item.name)?;
+    if (existing_id.is_some()) {
+        let persy_id = PersyId::from_str(&existing_id.unwrap())?;
+        let mut transaction = persy.begin()?;
+        transaction.delete(CLIPS, &persy_id)?;
+
+        let prepared = transaction.prepare()?;
+        prepared.commit()?;
+    }
     let mut transaction = persy.begin()?;
 
     let clip_bytes = bincode::serialize(&item)?;

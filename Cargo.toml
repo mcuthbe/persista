@@ -12,6 +12,7 @@ epi = "0.17.0"
 persy = "1.4.7"
 serde = {version = "1.0.195", features = ["derive"]}
 uuid = {features = ["v4"]}
+winapi = "0.3.9"
 
 [env]
 RUST_BACKTRACE = "1"

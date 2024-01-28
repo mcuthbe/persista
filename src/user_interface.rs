@@ -10,8 +10,8 @@ use eframe::egui::Context;
 use eframe::Frame;
 use egui::{ImageSource, Rect, Response, Ui, Window};
 use epi::egui::text;
+use winapi::shared::windef::HWND__;
 
-#[derive(Default)]
 pub struct PersistaApp {
     pub search_query: String,
     pub message: String,
@@ -19,6 +19,7 @@ pub struct PersistaApp {
     pub clips: Vec<Clip>,
     pub should_focus: bool,
     pub should_refersh: bool,
+    pub foreground_window: *mut HWND__,
 }
 
 impl PersistaApp {
@@ -99,6 +100,16 @@ impl eframe::App for PersistaApp {
                                 match set_clip(clip.value.as_str()) {
                                     Ok(_) => {}
                                     Err(e) => {}
+                                }
+                                if !self.foreground_window.is_null() {
+                                    unsafe {
+                                        winapi::um::winuser::SetForegroundWindow(
+                                            self.foreground_window,
+                                        );
+                                    }
+                                } else {
+                                    self.message =
+                                        "No previous window found to paste to".to_string();
                                 }
                             }
                             match &clip.value {

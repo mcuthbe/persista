@@ -5,6 +5,7 @@ mod errors;
 mod structs;
 mod user_interface;
 mod util;
+mod window;
 
 use clipboard::{get_clip, set_clip};
 use data_access::{open_database, retrieve_clip, save_clip, search_clips};
@@ -15,8 +16,12 @@ use enums::ClipboardItem;
 use structs::Clip;
 use user_interface::PersistaApp;
 
+use winapi::um::winuser::GetForegroundWindow;
+use window::get_foreground_window_handle;
+
 fn main() {
-    get_clip();
+    let foreground_window = get_foreground_window_handle();
+
     let clip = get_clip().unwrap();
     let test_clip = Clip {
         name: "image".to_owned(),
@@ -48,6 +53,7 @@ fn main() {
         message: "".to_string(),
         should_refersh: true,
         new_clip_name: "".to_string(),
+        foreground_window: foreground_window,
     };
 
     eframe::run_native("Persista", options, Box::new(|cc| Box::new(app)));
