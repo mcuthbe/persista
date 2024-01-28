@@ -9,6 +9,7 @@ use crate::{
 use eframe::egui::Context;
 use eframe::Frame;
 use egui::{ImageSource, Rect, Response, Ui, Window};
+use enigo::*;
 use epi::egui::text;
 use winapi::shared::windef::HWND__;
 
@@ -98,7 +99,9 @@ impl eframe::App for PersistaApp {
                         ui.vertical(|ui| {
                             if ui.link(&clip.name).clicked() {
                                 match set_clip(clip.value.as_str()) {
-                                    Ok(_) => {}
+                                    Ok(_) => {
+                                        self.message = "Successfully set clipboard".to_string()
+                                    }
                                     Err(e) => {}
                                 }
                                 if !self.foreground_window.is_null() {
@@ -107,6 +110,11 @@ impl eframe::App for PersistaApp {
                                             self.foreground_window,
                                         );
                                     }
+                                    let mut enigo = Enigo::new();
+
+                                    enigo.key_down(Key::Control);
+                                    enigo.key_click(Key::Layout('v'));
+                                    enigo.key_up(Key::Control);
                                 } else {
                                     self.message =
                                         "No previous window found to paste to".to_string();

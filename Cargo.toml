@@ -8,6 +8,7 @@ bincode = "1.3.3"
 clipboard-win = "5.0.0"
 eframe = "0.25.0"
 egui = "0.25.0"
+enigo = "0.1.3"
 epi = "0.17.0"
 persy = "1.4.7"
 serde = {version = "1.0.195", features = ["derive"]}
