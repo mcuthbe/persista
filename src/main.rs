@@ -13,11 +13,15 @@ use eframe::egui;
 use egui::ViewportBuilder;
 
 use enums::ClipboardItem;
+use errors::PersistaError;
 use structs::Clip;
 use user_interface::PersistaApp;
 
 use winapi::um::winuser::GetForegroundWindow;
 use window::get_foreground_window_handle;
+
+use std::error::{self, Error};
+use std::time::Duration;
 
 fn main() {
     let foreground_window = get_foreground_window_handle();
@@ -40,6 +44,13 @@ fn main() {
         }
     }
 
+    let mut tray = systray::Application::new().unwrap();
+    tray.set_icon_from_file("resources/icon.ico").unwrap();
+    tray.add_menu_item("Quit", |_window| -> Result<(), PersistaError> {
+        std::process::exit(0);
+    });
+    tray.wait_for_message();
+
     let mut options = eframe::NativeOptions::default();
     options.persist_window = false;
     options.viewport = ViewportBuilder::default()
@@ -53,7 +64,7 @@ fn main() {
         message: "".to_string(),
         should_refersh: true,
         new_clip_name: "".to_string(),
-        foreground_window: foreground_window,
+        foreground_window,
     };
 
     eframe::run_native("Persista", options, Box::new(|cc| Box::new(app)));
