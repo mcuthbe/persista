@@ -115,6 +115,8 @@ impl eframe::App for PersistaApp {
                                     enigo.key_down(Key::Control);
                                     enigo.key_click(Key::Layout('v'));
                                     enigo.key_up(Key::Control);
+
+                                    std::process::exit(0);
                                 } else {
                                     self.message =
                                         "No previous window found to paste to".to_string();
